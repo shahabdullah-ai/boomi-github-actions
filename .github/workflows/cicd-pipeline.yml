@@ -27,7 +27,9 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          sed -i 's/^lxml==.*/lxml/' requirements.txt
+          pip install -r requirements.txt
 
       - name: Fetch and lint Boomi XML
         env:
@@ -64,7 +66,9 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          sed -i 's/^lxml==.*/lxml/' requirements.txt
+          pip install -r requirements.txt
 
       - name: SonarQube analysis
         env:
@@ -93,7 +97,9 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          sed -i 's/^lxml==.*/lxml/' requirements.txt
+          pip install -r requirements.txt
 
       - name: Deploy to DEV
         env:
@@ -124,7 +130,9 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          sed -i 's/^lxml==.*/lxml/' requirements.txt
+          pip install -r requirements.txt
 
       - name: Deploy to STG
         env:
@@ -155,7 +163,9 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          sed -i 's/^lxml==.*/lxml/' requirements.txt
+          pip install -r requirements.txt
 
       - name: Deploy to PROD
         env:
