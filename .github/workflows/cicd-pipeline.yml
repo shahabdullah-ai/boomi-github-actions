@@ -57,7 +57,7 @@ jobs:
   sonarqube:
     runs-on: ubuntu-latest
     needs: lint
-    if: ${{ secrets.SONARQUBE_URL != '' }}
+    if: ${{ vars.SONARQUBE_URL != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -78,7 +78,7 @@ jobs:
           BOOMI_BASE_URL: https://api.boomi.com/api/rest/v1
           BOOMI_RELEASE_BASE_DIR: ${{ github.workspace }}
           BOOMI_RELEASE_FILE: release/release.json
-          BOOMI_SONARQUBE_HOST_URL: ${{ secrets.SONARQUBE_URL }}
+          BOOMI_SONARQUBE_HOST_URL: ${{ vars.SONARQUBE_URL }}
           BOOMI_SONARQUBE_PROJECT_KEY: ${{ secrets.SONARQUBE_PROJECT_KEY }}
           BOOMI_SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
         run: |
@@ -121,7 +121,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: deploy-dev
     environment: stg
-    if: ${{ secrets.BOOMI_ENV_STG != '' }}
+    if: ${{ vars.BOOMI_ENV_STG != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -142,7 +142,7 @@ jobs:
           BOOMI_BASE_URL: https://api.boomi.com/api/rest/v1
           BOOMI_RELEASE_BASE_DIR: ${{ github.workspace }}
           BOOMI_RELEASE_FILE: release/release.json
-          BOOMI_ENVIRONMENT_NAME: ${{ secrets.BOOMI_ENV_STG }}
+          BOOMI_ENVIRONMENT_NAME: ${{ vars.BOOMI_ENV_STG }}
           DEPLOY_CHANGED_ONLY: ${{ inputs.deploy_changed_only }}
           SINCE_DATE: ${{ inputs.since_date }}
           BOOMI_ATOM_NAME: ${{ inputs.boomi_atom_name }}
@@ -154,7 +154,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: deploy-stg
     environment: prod
-    if: ${{ always() && needs.deploy-dev.result == 'success' && secrets.BOOMI_ENV_PROD != '' }}
+    if: ${{ always() && needs.deploy-dev.result == 'success' && vars.BOOMI_ENV_PROD != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -175,7 +175,7 @@ jobs:
           BOOMI_BASE_URL: https://api.boomi.com/api/rest/v1
           BOOMI_RELEASE_BASE_DIR: ${{ github.workspace }}
           BOOMI_RELEASE_FILE: release/release.json
-          BOOMI_ENVIRONMENT_NAME: ${{ secrets.BOOMI_ENV_PROD }}
+          BOOMI_ENVIRONMENT_NAME: ${{ vars.BOOMI_ENV_PROD }}
           DEPLOY_CHANGED_ONLY: ${{ inputs.deploy_changed_only }}
           SINCE_DATE: ${{ inputs.since_date }}
           BOOMI_ATOM_NAME: ${{ inputs.boomi_atom_name }}
