@@ -1,0 +1,8 @@
+GitPython==3.1.45
+cryptography==46.0.3
+defusedxml==0.7.1
+lxml==4.9.4
+python-dotenv==1.2.1
+requests==2.32.5
+ratelimit==2.2.1
+retrying==1.4.2

@@ -1,0 +1,137 @@
+pipeline {
+    agent any
+    environment {
+        BOOMI_ACCOUNT_ID = '<add-account-id>'
+        BOOMI_BASE_URL = 'https://api.boomi.com/api/rest/v1'
+        BOOMI_CLI_REPO = 'boomi-cicd-cli-py'
+        BOOMI_RELEASE_REPO = 'boomi-cicd-release'
+        BOOMI_RELEASE_FILE = 'release/release.json'
+        BOOMI_CREDS = credentials('atomsphere-api')
+
+    }
+    stages {
+        stage('Git clone boomi-cicd-cli-pi repo') {
+            steps {
+                script {
+                    def CURRENT_DIRECTORY = pwd()
+                    env.BOOMI_CLI_BASE_DIR = "${CURRENT_DIRECTORY}/${env.BOOMI_CLI_REPO}"
+                    echo "BOOMI_CLI_BASE_DIR: ${env.BOOMI_CLI_BASE_DIR}"
+                }
+                dir("${env.BOOMI_CLI_BASE_DIR}") {
+                    git url: '<add-url-git-repo>/boomi-cicd-cli-py.git',
+                        credentialsId: '<add-jenkins-credentials-id>',
+                        branch: 'dev'
+                }
+            }
+        }
+
+        stage('Git clone boomi-cicd-release repo'){
+             steps {
+                script {
+                    def CURRENT_DIRECTORY = pwd()
+                    env.BOOMI_RELEASE_BASE_DIR = "${CURRENT_DIRECTORY}/${env.BOOMI_RELEASE_REPO}"
+                    echo "BOOMI_RELEASE_BASE_DIR: ${env.BOOMI_RELEASE_BASE_DIR}"
+                }
+                dir("${env.BOOMI_RELEASE_BASE_DIR}") {
+                    git url: '<add-url-git-repo>/boomi-cicd-release.git',
+                        credentialsId: '<add-jenkins-credentials-id>',
+                        branch: 'master'
+                }
+            }
+        }
+
+        stage('Boomi CICD Pipeline DEV'){
+            environment {
+                BOOMI_ENVIRONMENT_NAME = 'add-dev-environment-name'
+            }
+            steps {
+                script {
+                    env.BOOMI_USERNAME = "${env.BOOMI_CREDS_USR}"
+                    env.BOOMI_PASSWORD = "${env.BOOMI_CREDS_PSW}"
+                    sh '''
+                        # Create a vitual environment and activate
+                        python3.11 -m venv ${BOOMI_CLI_BASE_DIR}/venv
+                        source ${BOOMI_CLI_BASE_DIR}/venv/bin/activate
+                        python3.11 -m pip install --upgrade pip
+
+                        # Install required libraries
+                        pip install -r ${BOOMI_CLI_BASE_DIR}/requirements.txt
+
+                        export PYTHONPATH=${BOOMI_CLI_BASE_DIR}
+                        cd ${BOOMI_CLI_BASE_DIR}
+                        python3.11 boomi_cicd/scripts/release_pipeline.py
+                    '''
+                }
+            }
+        }
+
+        stage('Stage Deployment Approval') {
+            steps {
+                script {
+                    input message: 'Approve deployment to Stage environment?', ok: 'Approve'
+                }
+            }
+        }
+
+
+        stage('Boomi CICD Pipeline STG'){
+            environment {
+                BOOMI_ENVIRONMENT_NAME = 'add-stage-environment-name'
+            }
+            steps {
+                script {
+                    sh '''
+                        # Create a vitual environment and activate
+                        python3.11 -m venv ${BOOMI_CLI_BASE_DIR}/venv
+                        source ${BOOMI_CLI_BASE_DIR}/venv/bin/activate
+                        python3.11 -m pip install --upgrade pip
+
+                        # Install required libraries
+                        pip install -r ${BOOMI_CLI_BASE_DIR}/requirements.txt
+
+                        export PYTHONPATH=${BOOMI_CLI_BASE_DIR}
+                        cd ${BOOMI_CLI_BASE_DIR}
+                        python3.11 boomi_cicd/scripts/release_pipeline.py
+                    '''
+                }
+            }
+        }
+
+        stage('Production Deployment Approval') {
+            steps {
+                script {
+                    input message: 'Approve deployment to Production environment?', ok: 'Approve'
+                }
+            }
+        }
+
+
+        stage('Boomi CICD Pipeline PROD'){
+            environment {
+                BOOMI_ENVIRONMENT_NAME = 'add-prod-environment-name'
+            }
+            steps {
+                script {
+                    sh '''
+                        # Create a vitual environment and activate
+                        python3.11 -m venv ${BOOMI_CLI_BASE_DIR}/venv
+                        source ${BOOMI_CLI_BASE_DIR}/venv/bin/activate
+                        python3.11 -m pip install --upgrade pip
+
+                        # Install required libraries
+                        pip install -r ${BOOMI_CLI_BASE_DIR}/requirements.txt
+
+                        export PYTHONPATH=${BOOMI_CLI_BASE_DIR}
+                        cd ${BOOMI_CLI_BASE_DIR}
+                        python3.11 boomi_cicd/scripts/release_pipeline.py
+                    '''
+                }
+            }
+        }
+    }
+    post {
+        always {
+            deleteDir()
+        }
+    }
+}

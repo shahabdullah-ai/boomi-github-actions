@@ -1,0 +1,174 @@
+name: Boomi CICD Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_changed_only:
+        description: 'Only deploy components modified on or after since_date'
+        type: boolean
+        default: false
+      since_date:
+        description: 'Filter date YYYY-MM-DD (defaults to today if blank)'
+        required: false
+        default: ''
+      boomi_atom_name:
+        description: 'Comma-separated atom names to target. Leave empty for full environment.'
+        required: false
+        default: ''
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch and lint Boomi XML
+        env:
+          BOOMI_USERNAME: ${{ secrets.BOOMI_USERNAME }}
+          BOOMI_PASSWORD: ${{ secrets.BOOMI_PASSWORD }}
+          BOOMI_ACCOUNT_ID: ${{ secrets.BOOMI_ACCOUNT_ID }}
+          BOOMI_BASE_URL: https://api.boomi.com/api/rest/v1
+          BOOMI_RELEASE_BASE_DIR: ${{ github.workspace }}
+          BOOMI_RELEASE_FILE: release/release.json
+          BOOMI_COMPONENT_REPO_NAME: ${{ github.workspace }}/boomi_components
+        run: |
+          mkdir -p ${{ github.workspace }}/boomi_components
+          export PYTHONPATH=${{ github.workspace }}
+          python boomi_cicd/scripts/fetch_component_xml.py
+          python boomi_cicd/scripts/component_xml_code_quality.py
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: boomi_components/report.md
+          if-no-files-found: ignore
+
+  sonarqube:
+    runs-on: ubuntu-latest
+    needs: lint
+    if: ${{ secrets.SONARQUBE_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: SonarQube analysis
+        env:
+          BOOMI_USERNAME: ${{ secrets.BOOMI_USERNAME }}
+          BOOMI_PASSWORD: ${{ secrets.BOOMI_PASSWORD }}
+          BOOMI_ACCOUNT_ID: ${{ secrets.BOOMI_ACCOUNT_ID }}
+          BOOMI_BASE_URL: https://api.boomi.com/api/rest/v1
+          BOOMI_RELEASE_BASE_DIR: ${{ github.workspace }}
+          BOOMI_RELEASE_FILE: release/release.json
+          BOOMI_SONARQUBE_HOST_URL: ${{ secrets.SONARQUBE_URL }}
+          BOOMI_SONARQUBE_PROJECT_KEY: ${{ secrets.SONARQUBE_PROJECT_KEY }}
+          BOOMI_SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+        run: |
+          export PYTHONPATH=${{ github.workspace }}
+          python boomi_cicd/scripts/run_sonarqube.py
+
+  deploy-dev:
+    runs-on: ubuntu-latest
+    needs: lint
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Deploy to DEV
+        env:
+          BOOMI_USERNAME: ${{ secrets.BOOMI_USERNAME }}
+          BOOMI_PASSWORD: ${{ secrets.BOOMI_PASSWORD }}
+          BOOMI_ACCOUNT_ID: ${{ secrets.BOOMI_ACCOUNT_ID }}
+          BOOMI_BASE_URL: https://api.boomi.com/api/rest/v1
+          BOOMI_RELEASE_BASE_DIR: ${{ github.workspace }}
+          BOOMI_RELEASE_FILE: release/release.json
+          BOOMI_ENVIRONMENT_NAME: ${{ secrets.BOOMI_ENV_DEV }}
+          DEPLOY_CHANGED_ONLY: ${{ inputs.deploy_changed_only }}
+          SINCE_DATE: ${{ inputs.since_date }}
+          BOOMI_ATOM_NAME: ${{ inputs.boomi_atom_name }}
+        run: |
+          export PYTHONPATH=${{ github.workspace }}
+          python boomi_cicd/scripts/release_pipeline.py
+
+  deploy-stg:
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    environment: stg
+    if: ${{ secrets.BOOMI_ENV_STG != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Deploy to STG
+        env:
+          BOOMI_USERNAME: ${{ secrets.BOOMI_USERNAME }}
+          BOOMI_PASSWORD: ${{ secrets.BOOMI_PASSWORD }}
+          BOOMI_ACCOUNT_ID: ${{ secrets.BOOMI_ACCOUNT_ID }}
+          BOOMI_BASE_URL: https://api.boomi.com/api/rest/v1
+          BOOMI_RELEASE_BASE_DIR: ${{ github.workspace }}
+          BOOMI_RELEASE_FILE: release/release.json
+          BOOMI_ENVIRONMENT_NAME: ${{ secrets.BOOMI_ENV_STG }}
+          DEPLOY_CHANGED_ONLY: ${{ inputs.deploy_changed_only }}
+          SINCE_DATE: ${{ inputs.since_date }}
+          BOOMI_ATOM_NAME: ${{ inputs.boomi_atom_name }}
+        run: |
+          export PYTHONPATH=${{ github.workspace }}
+          python boomi_cicd/scripts/release_pipeline.py
+
+  deploy-prod:
+    runs-on: ubuntu-latest
+    needs: deploy-stg
+    environment: prod
+    if: ${{ always() && needs.deploy-dev.result == 'success' && secrets.BOOMI_ENV_PROD != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Deploy to PROD
+        env:
+          BOOMI_USERNAME: ${{ secrets.BOOMI_USERNAME }}
+          BOOMI_PASSWORD: ${{ secrets.BOOMI_PASSWORD }}
+          BOOMI_ACCOUNT_ID: ${{ secrets.BOOMI_ACCOUNT_ID }}
+          BOOMI_BASE_URL: https://api.boomi.com/api/rest/v1
+          BOOMI_RELEASE_BASE_DIR: ${{ github.workspace }}
+          BOOMI_RELEASE_FILE: release/release.json
+          BOOMI_ENVIRONMENT_NAME: ${{ secrets.BOOMI_ENV_PROD }}
+          DEPLOY_CHANGED_ONLY: ${{ inputs.deploy_changed_only }}
+          SINCE_DATE: ${{ inputs.since_date }}
+          BOOMI_ATOM_NAME: ${{ inputs.boomi_atom_name }}
+        run: |
+          export PYTHONPATH=${{ github.workspace }}
+          python boomi_cicd/scripts/release_pipeline.py

@@ -1,0 +1,35 @@
+{
+   "@type" : "EnvironmentExtensions",
+   "processProperties" : {
+      "@type" : "OverrideProcessProperties",
+      "ProcessProperty" : [
+         {
+            "@type" : "OverrideProcessProperty",
+            "ProcessPropertyValue" : [
+               {
+                  "@type" : "ProcessPropertyValue",
+                  "label" : "String",
+                  "key" : "new-1355426770730",
+                  "encryptedValueSet" : false,
+                  "useDefault" : false,
+                  "value" : "Partialupdates"
+               },
+               {
+                  "@type" : "ProcessPropertyValue",
+                  "label" : "Password",
+                  "key" : "new-1355426788553",
+                  "value" : "PasswordUpdated",
+                  "encryptedValueSet" : false,
+                  "useDefault" : false
+               }
+            ],
+            "id" : "24a56789...",
+            "name" : "Boomi Test"
+         }
+      ]
+   },
+   "environmentId" : "456789ab...",
+   "extensionGroupId" : "",
+   "id" : "6f678d09...",
+   "partial" : true
+}

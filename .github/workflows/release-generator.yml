@@ -1,0 +1,52 @@
+name: Boomi Release Generator
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'release/**'
+      - '.github/**'
+      - 'README.md'
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate release.json
+        env:
+          BOOMI_USERNAME: ${{ secrets.BOOMI_USERNAME }}
+          BOOMI_PASSWORD: ${{ secrets.BOOMI_PASSWORD }}
+          BOOMI_ACCOUNT_ID: ${{ secrets.BOOMI_ACCOUNT_ID }}
+          BOOMI_FOLDER_NAME: ${{ secrets.BOOMI_FOLDER_NAME }}
+          BOOMI_BASE_URL: https://api.boomi.com/api/rest/v1
+          BOOMI_RELEASE_BASE_DIR: ${{ github.workspace }}
+        run: |
+          export PYTHONPATH=${{ github.workspace }}
+          python boomi_cicd/scripts/generate_release.py
+
+      - name: Commit and push release.json
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add release/release.json
+          if git diff --cached --quiet; then
+            echo "[generate] No changes to release.json — skipping commit"
+          else
+            git commit -m "chore: auto-generate release.json [$(date +%Y.%m.%d)]"
+            git push
+          fi
