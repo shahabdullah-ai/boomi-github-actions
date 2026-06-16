@@ -117,11 +117,49 @@ jobs:
           export PYTHONPATH=${{ github.workspace }}
           python boomi_cicd/scripts/release_pipeline.py
 
-  deploy-stg:
+  test-dev:
     runs-on: ubuntu-latest
     needs: deploy-dev
+    if: ${{ vars.BOOMI_TEST_ATOM_NAME != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          sed -i 's/^lxml==.*/lxml/' requirements.txt
+          pip install -r requirements.txt
+
+      - name: Run automated tests
+        env:
+          BOOMI_USERNAME: ${{ secrets.BOOMI_USERNAME }}
+          BOOMI_PASSWORD: ${{ secrets.BOOMI_PASSWORD }}
+          BOOMI_ACCOUNT_ID: ${{ secrets.BOOMI_ACCOUNT_ID }}
+          BOOMI_BASE_URL: https://api.boomi.com/api/rest/v1
+          BOOMI_RELEASE_BASE_DIR: ${{ github.workspace }}
+          BOOMI_RELEASE_FILE: release/release.json
+          BOOMI_ENVIRONMENT_NAME: ${{ secrets.BOOMI_ENV_DEV }}
+          BOOMI_ATOM_NAME: ${{ vars.BOOMI_TEST_ATOM_NAME }}
+        run: |
+          export PYTHONPATH=${{ github.workspace }}
+          python boomi_cicd/scripts/automated_testing_junit.py
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-*.xml
+          if-no-files-found: ignore
+
+  deploy-stg:
+    runs-on: ubuntu-latest
+    needs: [deploy-dev, test-dev]
     environment: stg
-    if: ${{ vars.BOOMI_ENV_STG != '' }}
+    if: ${{ always() && needs.deploy-dev.result == 'success' && (needs.test-dev.result == 'success' || needs.test-dev.result == 'skipped') && vars.BOOMI_ENV_STG != '' }}
     steps:
       - uses: actions/checkout@v4
 
