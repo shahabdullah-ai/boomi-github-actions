@@ -8,6 +8,11 @@ on:
       - '.github/**'
       - 'README.md'
   workflow_dispatch:
+    inputs:
+      boomi_branch_name:
+        description: 'Comma-separated Boomi branch names (e.g. main,feature). Leave blank for default branch.'
+        required: false
+        default: ''
 
 jobs:
   generate:
@@ -35,6 +40,7 @@ jobs:
           BOOMI_PASSWORD: ${{ secrets.BOOMI_PASSWORD }}
           BOOMI_ACCOUNT_ID: ${{ secrets.BOOMI_ACCOUNT_ID }}
           BOOMI_FOLDER_NAME: ${{ secrets.BOOMI_FOLDER_NAME }}
+          BOOMI_BRANCH_NAME: ${{ inputs.boomi_branch_name }}
           BOOMI_BASE_URL: https://api.boomi.com/api/rest/v1
           BOOMI_RELEASE_BASE_DIR: ${{ github.workspace }}
         run: |

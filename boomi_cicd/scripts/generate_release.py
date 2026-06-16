@@ -77,27 +77,49 @@ def query_all_processes():
     return [r for r in response.get("result", []) if r.get("type") in DEPLOYABLE_TYPES]
 
 
-def get_latest_package_version(component_id):
-    """Return the highest packageVersion string from Boomi for this component, or None if unpacked."""
-    response = boomi_cicd.atomsphere_request(
-        method="post",
-        resource_path="/PackagedComponent/query",
-        payload={
-            "QueryFilter": {
-                "expression": {
-                    "argument": [component_id],
-                    "operator": "EQUALS",
-                    "property": "componentId",
+def get_latest_package_version(component_id, branch_ids=None):
+    """Return (packageVersion, branchId) for the most recently created package, or (None, None)."""
+    all_results = []
+
+    if branch_ids:
+        for branch_id in branch_ids:
+            response = boomi_cicd.atomsphere_request(
+                method="post",
+                resource_path="/PackagedComponent/query",
+                payload={
+                    "QueryFilter": {
+                        "expression": {
+                            "operator": "and",
+                            "nestedExpression": [
+                                {"argument": [component_id], "operator": "EQUALS", "property": "componentId"},
+                                {"argument": [branch_id], "operator": "EQUALS", "property": "branchId"},
+                            ],
+                        }
+                    }
+                },
+            ).json()
+            all_results.extend(response.get("result", []))
+    else:
+        response = boomi_cicd.atomsphere_request(
+            method="post",
+            resource_path="/PackagedComponent/query",
+            payload={
+                "QueryFilter": {
+                    "expression": {
+                        "argument": [component_id],
+                        "operator": "EQUALS",
+                        "property": "componentId",
+                    }
                 }
-            }
-        },
-    ).json()
+            },
+        ).json()
+        all_results = response.get("result", [])
 
-    results = response.get("result", [])
-    if not results:
-        return None
+    if not all_results:
+        return None, None
 
-    return max(results, key=lambda r: r.get("createdDate", "")).get("packageVersion")
+    best = max(all_results, key=lambda r: r.get("createdDate", ""))
+    return best.get("packageVersion"), best.get("branchId")
 
 
 def verify_non_deleted(components):
@@ -122,6 +144,19 @@ def main():
     release_base_dir = os.environ.get("BOOMI_RELEASE_BASE_DIR", ".")
     output_path = os.path.join(release_base_dir, "release", "release.json")
 
+    # Resolve optional branch names to IDs
+    branch_ids = []
+    branch_names_raw = os.environ.get("BOOMI_BRANCH_NAME", "").strip()
+    if branch_names_raw:
+        from boomi_cicd.util.branch import BranchNotFoundError
+        for name in [b.strip() for b in branch_names_raw.split(",") if b.strip()]:
+            try:
+                bid = boomi_cicd.get_branch_id(name)
+                branch_ids.append(bid)
+                print(f"[generate] Resolved branch '{name}' → {bid}")
+            except BranchNotFoundError:
+                print(f"[generate] WARNING: branch '{name}' not found — skipping")
+
     if folder:
         folder_ids = get_folder_ids(folder)
         if folder_ids:
@@ -143,16 +178,19 @@ def main():
 
     pipelines = []
     for c in components:
-        version = get_latest_package_version(c["componentId"])
+        version, branch_id = get_latest_package_version(c["componentId"], branch_ids or None)
         if version is None:
             print(f"[generate] WARNING: no packaged version found for {c.get('name', c['componentId'])} — skipping")
             continue
-        pipelines.append({
+        entry = {
             "componentId": c["componentId"],
             "componentType": c.get("type", ""),
             "packageVersion": version,
             "notes": c.get("name", ""),
-        })
+        }
+        if branch_id:
+            entry["branchId"] = branch_id
+        pipelines.append(entry)
 
     release = {"pipelines": pipelines}
 
@@ -162,7 +200,8 @@ def main():
 
     print(f"[generate] Wrote {len(pipelines)} processes to {output_path}")
     for p in pipelines:
-        print(f"  {p['notes']} → {p['packageVersion']}")
+        branch_note = f" (branch: {p['branchId']})" if p.get('branchId') else ""
+        print(f"  {p['notes']} → {p['packageVersion']}{branch_note}")
 
 
 if __name__ == "__main__":

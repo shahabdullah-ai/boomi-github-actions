@@ -61,13 +61,10 @@ for release in releases["pipelines"]:
     package_id = boomi_cicd.query_packaged_component(component_id, package_version)
 
     if not package_id:
+        branch_id = release.get("branchId")
         package_id = boomi_cicd.create_packaged_component(
-            component_id, package_version, notes
+            component_id, package_version, notes, branch_id
         )
-        # Optionally, create the package from a specific branch. 
-        # If the branch id is not provided, the default branch of the service account is used.
-        # package_id = boomi_cicd.create_packaged_component(
-        #     component_id, package_version, notes, destination_branch)
 
     # The third parameter determines if the package is currently deployed (True) or has every been deployed (False)
     if _atom_ids:
