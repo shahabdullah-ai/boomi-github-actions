@@ -183,7 +183,7 @@
     {
       "componentId": "f2c58f78-f2f3-4705-9a28-ca1d2541ec71",
       "componentType": "webservice.external",
-      "packageVersion": "2026.06.01",
+      "packageVersion": "1.0.1",
       "notes": "Template Docker API Proxy"
     },
     {
@@ -273,31 +273,31 @@
     {
       "componentId": "11834430-9a22-487f-b47a-b9abe83ac75d",
       "componentType": "process",
-      "packageVersion": "6.0",
+      "packageVersion": "deploy-1781754805",
       "notes": "DH - Customer Inbound"
     },
     {
       "componentId": "16e3ea24-bcdc-4bf4-af2d-1423f92ed291",
       "componentType": "process",
-      "packageVersion": "10.0",
+      "packageVersion": "deploy-1781755205",
       "notes": "DH - Faculty Inbound"
     },
     {
       "componentId": "2f4a3df7-0264-4698-a01b-db880ca437df",
       "componentType": "process",
-      "packageVersion": "10.0",
+      "packageVersion": "deploy-1781755209",
       "notes": "DH - Course Inbound"
     },
     {
       "componentId": "33fbae45-868e-46cb-8d34-d6ef277bd178",
       "componentType": "process",
-      "packageVersion": "6.0",
+      "packageVersion": "deploy-1781754808",
       "notes": "DH - Product Inbound"
     },
     {
       "componentId": "62680e81-3c82-4859-aff7-ec3f0d5a3494",
       "componentType": "process",
-      "packageVersion": "18.0",
+      "packageVersion": "deploy-1781755198",
       "notes": "DH - Institutions Inbound"
     }
   ]
