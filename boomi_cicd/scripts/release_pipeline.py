@@ -42,7 +42,7 @@ if _atom_ids:
     _atom_names = _kept_names
     _atom_ids = _kept_ids
     if not _atom_ids:
-        raise SystemExit(f"[atom] No specified atoms are attached to {boomi_cicd.ENVIRONMENT_NAME} — aborting to prevent unintended full-environment deploy")
+        print(f"[atom] No specified atoms attached to {boomi_cicd.ENVIRONMENT_NAME} — deploying to full environment")
 
 if _atom_ids:
     print(f"[atom] Targeting {len(_atom_ids)} atom(s) in {boomi_cicd.ENVIRONMENT_NAME}: {', '.join(_atom_names)}")
