@@ -183,7 +183,7 @@
     {
       "componentId": "f2c58f78-f2f3-4705-9a28-ca1d2541ec71",
       "componentType": "webservice.external",
-      "packageVersion": "1.0.1",
+      "packageVersion": "1.0.2",
       "notes": "Template Docker API Proxy"
     },
     {
