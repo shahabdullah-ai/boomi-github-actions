@@ -299,6 +299,24 @@
       "componentType": "process",
       "packageVersion": "deploy-1781755198",
       "notes": "DH - Institutions Inbound"
+    },
+    {
+      "componentId": "23046b66-0558-4783-ad2e-4ecad7985460",
+      "componentType": "process",
+      "packageVersion": "1.0.0",
+      "notes": "DH - Credentialing Inbound"
+    },
+    {
+      "componentId": "89e23995-040a-4a50-aec0-8b9157defc7c",
+      "componentType": "process",
+      "packageVersion": "1.0.0",
+      "notes": "DH - HR Inbound"
+    },
+    {
+      "componentId": "ad7d7806-b580-4b44-abe3-08496aad5b6f",
+      "componentType": "process",
+      "packageVersion": "1.0.0",
+      "notes": "DH - Clinical Inbound Master"
     }
   ]
 }
