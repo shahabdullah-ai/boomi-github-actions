@@ -129,7 +129,7 @@
     {
       "componentId": "7279fd4f-452b-48d7-81dd-674f74a64617",
       "componentType": "process",
-      "packageVersion": "1.0.2",
+      "packageVersion": "1.0.3",
       "notes": "testing csv with flow control"
     },
     {
@@ -303,13 +303,19 @@
     {
       "componentId": "23046b66-0558-4783-ad2e-4ecad7985460",
       "componentType": "process",
-      "packageVersion": "1.0.0",
+      "packageVersion": "1.0.3",
       "notes": "DH - Credentialing Inbound"
+    },
+    {
+      "componentId": "2a5160d8-1c93-4bf1-9e11-8dcf188647e8",
+      "componentType": "process",
+      "packageVersion": "1.0.0",
+      "notes": "DH - Provider to Epic"
     },
     {
       "componentId": "89e23995-040a-4a50-aec0-8b9157defc7c",
       "componentType": "process",
-      "packageVersion": "1.0.0",
+      "packageVersion": "1.0.1",
       "notes": "DH - HR Inbound"
     },
     {
