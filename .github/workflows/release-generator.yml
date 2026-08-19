@@ -1,12 +1,6 @@
 name: Boomi Release Generator
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'release/**'
-      - '.github/**'
-      - 'README.md'
   workflow_dispatch:
     inputs:
       boomi_branch_name:
