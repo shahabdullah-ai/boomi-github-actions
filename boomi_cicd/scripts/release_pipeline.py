@@ -17,10 +17,10 @@ releases = boomi_cicd.set_release()
 
 _filter_enabled = os.environ.get("DEPLOY_CHANGED_ONLY", "false").lower() == "true"
 _since_raw = os.environ.get("SINCE_DATE", "").strip()
-_since_version = _since_raw.replace("-", ".") if _since_raw else datetime.date.today().strftime("%Y.%m.%d")
+_since_date = _since_raw if _since_raw else datetime.date.today().isoformat()
 
 if _filter_enabled:
-    print(f"[filter] DEPLOY_CHANGED_ONLY enabled — skipping components with packageVersion < {_since_version}")
+    print(f"[filter] DEPLOY_CHANGED_ONLY enabled — skipping components packaged before {_since_date}")
 
 environment_id = boomi_cicd.query_environment(boomi_cicd.ENVIRONMENT_NAME)
 
@@ -54,9 +54,12 @@ for release in releases["pipelines"]:
     package_version = release["packageVersion"]
     notes = release.get("notes")
 
-    if _filter_enabled and package_version < _since_version:
-        print(f"[filter] Skipping {notes} (version {package_version} < {_since_version})")
-        continue
+    created_date = release.get("createdDate", "")
+    if _filter_enabled:
+        compare_value = created_date if created_date else package_version.replace(".", "-")
+        if compare_value < _since_date:
+            print(f"[filter] Skipping {notes} (packaged {created_date or package_version} < {_since_date})")
+            continue
 
     package_id = boomi_cicd.query_packaged_component(component_id, package_version)
 

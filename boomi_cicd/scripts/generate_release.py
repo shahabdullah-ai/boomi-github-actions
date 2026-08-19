@@ -116,10 +116,10 @@ def get_latest_package_version(component_id, branch_ids=None):
         all_results = response.get("result", [])
 
     if not all_results:
-        return None, None
+        return None, None, None
 
     best = max(all_results, key=lambda r: r.get("createdDate", ""))
-    return best.get("packageVersion"), best.get("branchId")
+    return best.get("packageVersion"), best.get("branchId"), best.get("createdDate")
 
 
 def verify_non_deleted(components):
@@ -178,7 +178,7 @@ def main():
 
     pipelines = []
     for c in components:
-        version, branch_id = get_latest_package_version(c["componentId"], branch_ids or None)
+        version, branch_id, created_date = get_latest_package_version(c["componentId"], branch_ids or None)
         if version is None:
             print(f"[generate] WARNING: no packaged version found for {c.get('name', c['componentId'])} — skipping")
             continue
@@ -188,6 +188,8 @@ def main():
             "packageVersion": version,
             "notes": c.get("name", ""),
         }
+        if created_date:
+            entry["createdDate"] = created_date
         if branch_id:
             entry["branchId"] = branch_id
         pipelines.append(entry)
