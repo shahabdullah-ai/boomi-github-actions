@@ -43,17 +43,52 @@ def query_all_pages(resource_path, payload):
 def get_folder_ids(folder_name):
     """
     Return all folder IDs whose fullPath starts with folder_name.
-    Uses POST /Folder/query which returns the complete flat folder list with fullPath.
+    Traverses hierarchy by parentId to avoid Folder/queryMore limitations.
     """
-    folders = query_all_pages("/Folder/query", {})
-    matching = [
-        f["id"] for f in folders
-        if f.get("fullPath", "").startswith(folder_name)
-        and not f.get("deleted", False)
-    ]
+    parts = [p.strip() for p in folder_name.split("/")]
+    parent_id = ""
 
-    print(f"[generate] Found {len(matching)} folder(s) under '{folder_name}'")
-    return matching
+    for part in parts:
+        payload = {
+            "QueryFilter": {
+                "expression": {
+                    "operator": "and",
+                    "nestedExpression": [
+                        {"argument": [part], "operator": "EQUALS", "property": "name"},
+                        {"argument": [parent_id], "operator": "EQUALS", "property": "parentId"},
+                        {"argument": ["false"], "operator": "EQUALS", "property": "deleted"},
+                    ],
+                }
+            }
+        }
+        results = query_all_pages("/Folder/query", payload)
+        if not results:
+            print(f"[generate] Found 0 folder(s) under '{folder_name}'")
+            return []
+        parent_id = results[0]["id"]
+
+    # BFS to collect target folder + all descendants
+    all_ids = [parent_id]
+    queue = [parent_id]
+    while queue:
+        pid = queue.pop(0)
+        children = query_all_pages("/Folder/query", {
+            "QueryFilter": {
+                "expression": {
+                    "operator": "and",
+                    "nestedExpression": [
+                        {"argument": [pid], "operator": "EQUALS", "property": "parentId"},
+                        {"argument": ["false"], "operator": "EQUALS", "property": "deleted"},
+                    ],
+                }
+            }
+        })
+        for child in children:
+            all_ids.append(child["id"])
+            queue.append(child["id"])
+
+    print(f"[generate] Found {len(all_ids)} folder(s) under '{folder_name}'")
+    return all_ids
 
 
 def query_processes_in_folder(folder_id):
