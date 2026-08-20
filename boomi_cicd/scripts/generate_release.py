@@ -43,47 +43,47 @@ def query_all_pages(resource_path, payload):
 def get_folder_ids(folder_name):
     """
     Return all folder IDs whose fullPath starts with folder_name.
-    Traverses hierarchy by parentId to avoid Folder/queryMore limitations.
+    Traverses hierarchy by name filter + fullPath match to avoid Folder/queryMore limitations.
     """
     parts = [p.strip() for p in folder_name.split("/")]
-    parent_id = ""
+    target_id = None
 
-    for part in parts:
+    for i, part in enumerate(parts):
+        expected_path = "/".join(parts[:i + 1])
         payload = {
             "QueryFilter": {
                 "expression": {
-                    "operator": "and",
-                    "nestedExpression": [
-                        {"argument": [part], "operator": "EQUALS", "property": "name"},
-                        {"argument": [parent_id], "operator": "EQUALS", "property": "parentId"},
-                        {"argument": ["false"], "operator": "EQUALS", "property": "deleted"},
-                    ],
+                    "argument": [part],
+                    "operator": "EQUALS",
+                    "property": "name",
                 }
             }
         }
         results = query_all_pages("/Folder/query", payload)
-        if not results:
+        match = next(
+            (f for f in results if f.get("fullPath") == expected_path and not f.get("deleted", False)),
+            None,
+        )
+        if not match:
             print(f"[generate] Found 0 folder(s) under '{folder_name}'")
             return []
-        parent_id = results[0]["id"]
+        target_id = match["id"]
 
-    # BFS to collect target folder + all descendants
-    all_ids = [parent_id]
-    queue = [parent_id]
+    # BFS using parentId filter to collect all descendants
+    all_ids = [target_id]
+    queue = [target_id]
     while queue:
         pid = queue.pop(0)
         children = query_all_pages("/Folder/query", {
             "QueryFilter": {
                 "expression": {
-                    "operator": "and",
-                    "nestedExpression": [
-                        {"argument": [pid], "operator": "EQUALS", "property": "parentId"},
-                        {"argument": ["false"], "operator": "EQUALS", "property": "deleted"},
-                    ],
+                    "argument": [pid],
+                    "operator": "EQUALS",
+                    "property": "parentId",
                 }
             }
         })
-        for child in children:
+        for child in [c for c in children if not c.get("deleted", False)]:
             all_ids.append(child["id"])
             queue.append(child["id"])
 
