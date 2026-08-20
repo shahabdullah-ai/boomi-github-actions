@@ -14,18 +14,33 @@ DEPLOYABLE_TYPES = {
 }
 
 
+def query_all_pages(resource_path, payload):
+    """Fetch all pages from a Boomi query endpoint using queryToken/queryMore pagination."""
+    results = []
+    response = boomi_cicd.atomsphere_request(
+        method="post",
+        resource_path=resource_path,
+        payload=payload,
+    ).json()
+    results.extend(response.get("result", []))
+
+    while "queryToken" in response and response["queryToken"]:
+        response = boomi_cicd.atomsphere_request(
+            method="post",
+            resource_path=resource_path.replace("/query", "/queryMore"),
+            payload={"queryToken": response["queryToken"]},
+        ).json()
+        results.extend(response.get("result", []))
+
+    return results
+
+
 def get_folder_ids(folder_name):
     """
     Return all folder IDs whose fullPath starts with folder_name.
     Uses POST /Folder/query which returns the complete flat folder list with fullPath.
     """
-    response = boomi_cicd.atomsphere_request(
-        method="post",
-        resource_path="/Folder/query",
-        payload={},
-    ).json()
-
-    folders = response.get("result", [])
+    folders = query_all_pages("/Folder/query", {})
     matching = [
         f["id"] for f in folders
         if f.get("fullPath", "").startswith(folder_name)
@@ -49,12 +64,8 @@ def query_processes_in_folder(folder_id):
             }
         }
     }
-    response = boomi_cicd.atomsphere_request(
-        method="post",
-        resource_path="/ComponentMetadata/query",
-        payload=payload,
-    ).json()
-    return [r for r in response.get("result", []) if r.get("type") in DEPLOYABLE_TYPES]
+    results = query_all_pages("/ComponentMetadata/query", payload)
+    return [r for r in results if r.get("type") in DEPLOYABLE_TYPES]
 
 
 def query_all_processes():
@@ -69,12 +80,8 @@ def query_all_processes():
             }
         }
     }
-    response = boomi_cicd.atomsphere_request(
-        method="post",
-        resource_path="/ComponentMetadata/query",
-        payload=payload,
-    ).json()
-    return [r for r in response.get("result", []) if r.get("type") in DEPLOYABLE_TYPES]
+    results = query_all_pages("/ComponentMetadata/query", payload)
+    return [r for r in results if r.get("type") in DEPLOYABLE_TYPES]
 
 
 def get_latest_package_version(component_id, branch_ids=None):
@@ -83,37 +90,27 @@ def get_latest_package_version(component_id, branch_ids=None):
 
     if branch_ids:
         for branch_id in branch_ids:
-            response = boomi_cicd.atomsphere_request(
-                method="post",
-                resource_path="/PackagedComponent/query",
-                payload={
-                    "QueryFilter": {
-                        "expression": {
-                            "operator": "and",
-                            "nestedExpression": [
-                                {"argument": [component_id], "operator": "EQUALS", "property": "componentId"},
-                                {"argument": [branch_id], "operator": "EQUALS", "property": "branchId"},
-                            ],
-                        }
-                    }
-                },
-            ).json()
-            all_results.extend(response.get("result", []))
-    else:
-        response = boomi_cicd.atomsphere_request(
-            method="post",
-            resource_path="/PackagedComponent/query",
-            payload={
+            all_results.extend(query_all_pages("/PackagedComponent/query", {
                 "QueryFilter": {
                     "expression": {
-                        "argument": [component_id],
-                        "operator": "EQUALS",
-                        "property": "componentId",
+                        "operator": "and",
+                        "nestedExpression": [
+                            {"argument": [component_id], "operator": "EQUALS", "property": "componentId"},
+                            {"argument": [branch_id], "operator": "EQUALS", "property": "branchId"},
+                        ],
                     }
                 }
-            },
-        ).json()
-        all_results = response.get("result", [])
+            }))
+    else:
+        all_results = query_all_pages("/PackagedComponent/query", {
+            "QueryFilter": {
+                "expression": {
+                    "argument": [component_id],
+                    "operator": "EQUALS",
+                    "property": "componentId",
+                }
+            }
+        })
 
     if not all_results:
         return None, None, None
