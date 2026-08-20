@@ -23,8 +23,9 @@ def query_all_pages(resource_path, payload):
         payload=payload,
     ).json()
     results.extend(response.get("result", []))
+    total = response.get("numberOfResults", len(results))
 
-    while "queryToken" in response and response["queryToken"]:
+    while len(results) < total and response.get("queryToken"):
         response = boomi_cicd.atomsphere_request(
             method="post",
             resource_path=resource_path.replace("/query", "/queryMore"),
