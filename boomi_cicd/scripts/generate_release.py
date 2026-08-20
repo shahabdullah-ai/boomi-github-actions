@@ -26,12 +26,16 @@ def query_all_pages(resource_path, payload):
     total = response.get("numberOfResults", len(results))
 
     while len(results) < total and response.get("queryToken"):
-        response = boomi_cicd.atomsphere_request(
-            method="post",
-            resource_path=resource_path.replace("/query", "/queryMore"),
-            payload={"queryToken": response["queryToken"]},
-        ).json()
-        results.extend(response.get("result", []))
+        try:
+            response = boomi_cicd.atomsphere_request(
+                method="post",
+                resource_path=resource_path.replace("/query", "/queryMore"),
+                payload={"queryToken": response["queryToken"]},
+            ).json()
+            results.extend(response.get("result", []))
+        except Exception as e:
+            print(f"[paginate] queryMore stopped at {len(results)}/{total} — {e}")
+            break
 
     return results
 
@@ -164,8 +168,7 @@ def main():
                 candidates.extend(results)
             print(f"[generate] {len(candidates)} candidate processes across {len(folder_ids)} folder(s)")
         else:
-            print(f"[generate] WARNING: no folders matched '{folder}', querying all processes")
-            candidates = query_all_processes()
+            raise SystemExit(f"[generate] ERROR: no folders matched '{folder}'. Check BOOMI_FOLDER_NAME — folder must exist and be accessible in this account.")
     else:
         candidates = query_all_processes()
         print(f"[generate] {len(candidates)} candidate processes (no folder filter)")
