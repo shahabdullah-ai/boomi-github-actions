@@ -176,6 +176,43 @@ def verify_non_deleted(components):
     return verified
 
 
+def find_test_harnesses(components):
+    """Map each component id to its automated-test harness, matched by name.
+
+    A harness cannot be discovered from the API — nothing on a component records
+    "this tests that" — so it is resolved by convention: a process named
+    "<name><suffix>" is the harness for the process named "<name>" within the same
+    folder set. Override the suffix with BOOMI_TEST_SUFFIX; set it empty to disable
+    harness matching entirely.
+
+    Returns {tested_component_id: harness_component_record}.
+    """
+    suffix = os.environ.get("BOOMI_TEST_SUFFIX", " - Test")
+    if not suffix:
+        return {}
+
+    by_name = {}
+    for c in components:
+        name = c.get("name", "")
+        if name:
+            by_name.setdefault(name, c)
+
+    harnesses = {}
+    for c in components:
+        name = c.get("name", "")
+        if not name.endswith(suffix):
+            continue
+        tested = by_name.get(name[: -len(suffix)])
+        # A process merely ending in the suffix is not a harness unless the process
+        # it would be testing actually exists.
+        if tested and tested["componentId"] != c["componentId"]:
+            harnesses[tested["componentId"]] = c
+
+    if harnesses:
+        print(f"[generate] Matched {len(harnesses)} test harness(es) by '{suffix}' suffix")
+    return harnesses
+
+
 def main():
     folder = os.environ.get("BOOMI_FOLDER_NAME", "")
     release_base_dir = os.environ.get("BOOMI_RELEASE_BASE_DIR", ".")
@@ -212,22 +249,38 @@ def main():
     components = list({c["componentId"]: c for c in components}.values())
     print(f"[generate] {len(components)} processes confirmed non-deleted")
 
+    harnesses = find_test_harnesses(components)
+    harness_ids = {h["componentId"] for h in harnesses.values()}
+
     pipelines = []
     for c in components:
+        # The test stage deploys and executes a harness against the process it tests,
+        # so a harness must not also appear as a deliverable of its own — otherwise it
+        # promotes to Stage and Production alongside real integrations.
+        if c["componentId"] in harness_ids:
+            continue
+
         version, branch_id, created_date = get_latest_package_version(c["componentId"], branch_ids or None)
         if version is None:
             print(f"[generate] WARNING: no packaged version found for {c.get('name', c['componentId'])} — skipping")
             continue
+        name = c.get("name", "")
         entry = {
             "componentId": c["componentId"],
             "componentType": c.get("type", ""),
             "packageVersion": version,
-            "notes": c.get("name", ""),
+            # automated_testing_junit.py indexes processName directly, so it must always
+            # be present — a missing key is a KeyError that kills the whole test stage.
+            "processName": name,
+            "notes": name,
         }
         if created_date:
             entry["createdDate"] = created_date
         if branch_id:
             entry["branchId"] = branch_id
+        harness = harnesses.get(c["componentId"])
+        if harness:
+            entry["automatedTestId"] = harness["componentId"]
         pipelines.append(entry)
 
     release = {"pipelines": pipelines}
@@ -239,7 +292,8 @@ def main():
     print(f"[generate] Wrote {len(pipelines)} processes to {output_path}")
     for p in pipelines:
         branch_note = f" (branch: {p['branchId']})" if p.get('branchId') else ""
-        print(f"  {p['notes']} → {p['packageVersion']}{branch_note}")
+        test_note = " [+test]" if p.get("automatedTestId") else ""
+        print(f"  {p['notes']} → {p['packageVersion']}{branch_note}{test_note}")
 
 
 if __name__ == "__main__":
