@@ -1,0 +1,44 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          sed -i 's/^lxml==.*/lxml/' requirements.txt
+          pip install -r requirements.txt
+
+      - name: Fetch and lint Boomi XML
+        env:
+          BOOMI_USERNAME: ${{ secrets.BOOMI_USERNAME }}
+          BOOMI_PASSWORD: ${{ secrets.BOOMI_PASSWORD }}
+          BOOMI_ACCOUNT_ID: ${{ secrets.BOOMI_ACCOUNT_ID }}
+          BOOMI_BASE_URL: https://api.boomi.com/api/rest/v1
+          BOOMI_RELEASE_BASE_DIR: ${{ github.workspace }}
+          BOOMI_RELEASE_FILE: release/release.json
+          BOOMI_COMPONENT_REPO_NAME: ${{ github.workspace }}/boomi_components
+        run: |
+          mkdir -p ${{ github.workspace }}/boomi_components
+          export PYTHONPATH=${{ github.workspace }}
+          python boomi_cicd/scripts/fetch_component_xml.py
+          python boomi_cicd/scripts/component_xml_code_quality.py
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: boomi_components/report.md
+          if-no-files-found: ignore
